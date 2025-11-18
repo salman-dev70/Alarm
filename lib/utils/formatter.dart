@@ -4,7 +4,7 @@ import '../models/alarm_model.dart';
 class FormatterUtil {
   // Time format: "07:30"
   static String formatTime(DateTime time) {
-    return DateFormat('HH:mm').format(time);
+    return DateFormat('hh:mm a').format(time);
   }
 
   // Date format: "Mon, Jan 15"

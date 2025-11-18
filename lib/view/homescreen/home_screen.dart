@@ -1,7 +1,7 @@
 import 'package:alarm_app/controller/alarm_state.dart';
-import 'package:alarm_app/providers/provider_objects.dart';
-import 'package:alarm_app/services/notification_service.dart';
-import 'package:alarm_app/view/editscreen/edit_Screen.dart';
+
+import 'package:alarm_app/view/editscreen/add_edit.dart';
+
 import 'package:alarm_app/view/homescreen/alarm_list_body.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,12 +32,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: const AlarmListBody(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // NotificationService().showImmediateTestNotification();
-          NotificationService().testSimpleNotification();
-          // Navigator.push(
-          //   context,
-          //   MaterialPageRoute(builder: (context) => const AddEditAlarmScreen()),
-          // );
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddEditAlarmScreen()),
+          );
         },
         child: const Icon(Icons.add),
       ),

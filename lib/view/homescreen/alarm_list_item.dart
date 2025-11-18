@@ -1,6 +1,8 @@
 import 'package:alarm_app/controller/alarm_state.dart';
 import 'package:alarm_app/utils/formatter.dart';
 import 'package:alarm_app/utils/stringresources.dart';
+import 'package:alarm_app/view/editscreen/add_edit.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/alarm_model.dart';
@@ -57,6 +59,14 @@ class AlarmListItem extends ConsumerWidget {
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: ListTile(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddEditAlarmScreen(alarm: alarm),
+              ),
+            );
+          },
           leading: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -78,6 +88,19 @@ class AlarmListItem extends ConsumerWidget {
           trailing: Switch(
             value: alarm.isActive,
             onChanged: (value) {
+              // Show snackbar if time is being adjusted
+              if (value &&
+                  alarm.repeat == RepeatType.once &&
+                  alarm.time.isBefore(DateTime.now())) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Alarm scheduled  at ${FormatterUtil.formatTime(alarm.time)}',
+                    ),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
               ref.read(alarmProvider.notifier).toogleAlarm(alarm.id, value);
             },
           ),

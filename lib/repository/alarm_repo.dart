@@ -104,16 +104,31 @@ class AlarmRepository {
       }
 
       final alarm = alarms[alarmIndex];
-      final updatedAlarm = alarm.copyWith(isActive: isActive);
+
+      DateTime scheduledTime = alarm.time;
+      if (isActive &&
+          alarm.repeat == RepeatType.once &&
+          alarm.time.isBefore(DateTime.now())) {
+        // Next  same time set
+        scheduledTime = alarm.time.add(const Duration(days: 7));
+        print('⏰ Alarm time passed, scheduling for next day: $scheduledTime');
+      }
+
+      final updatedAlarm = alarm.copyWith(
+        isActive: isActive,
+        time: scheduledTime,
+      );
 
       if (!isActive) {
+        // Alarm disable - notification cancel
         await _notificationService.cancelNotification(alarmId);
       } else {
+        // Alarm enable - notification schedule
         await _notificationService.scheduleAlarmNotification(
           id: alarm.id,
           title: 'Alarm',
           body: alarm.label,
-          scheduledTime: alarm.time,
+          scheduledTime: scheduledTime,
           repeat: alarm.repeat,
         );
       }

@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:alarm_app/models/alarm_model.dart';
 
@@ -39,57 +40,60 @@ class NotificationService {
     );
     await _notification.initialize(
       settings,
-      onDidReceiveNotificationResponse: _onNotificationResponse,
+      onDidReceiveNotificationResponse: onNotificationResponse,
     );
     await _createNotificationChannel();
-    // Debugging current timezone info print
-    print(' Current TZ Time: ${tz.TZDateTime.now(tz.local)}');
-    print(' Current Device Time: ${DateTime.now()}');
   }
 
-  static void _onNotificationResponse(NotificationResponse response) {
-    _handleAction(response.actionId ?? '', response.payload ?? '');
-    log("trigger");
-  }
-
-  static void _handleAction(String actionId, String payload) {
-    print('Action: $actionId, Payload: $payload');
-    log("enter in handling");
+  static void onNotificationResponse(NotificationResponse response) {
+    log("enter in response function");
+    final String? actionId = response.actionId;
+    final String? payload = response.payload;
+    log("$actionId,==$snoozeActionId");
     if (actionId == snoozeActionId) {
-      print('Action: $actionId, Payload: $payload');
-      log("snooze action id match");
-      _handleSnooze(payload);
+      _handleSnooze(payload!);
+      print('OK action tapped. Payload: $payload');
     } else if (actionId == cancelActionId) {
-      _handleCancel(payload);
+      _handleCancel(payload!);
+      print('Cancel action tapped. Payload: $payload');
     } else {
-      _handleNotificationTap(payload);
-      log("open app");
+      _handleNotificationTap(payload!);
+      print('Notification body tapped. Payload: $payload');
     }
   }
 
   static void _handleSnooze(String payload) async {
-    // Payload format: 'alarmId|alarmLabel|originalTime'
-    final parts = payload.split('|');
-    if (parts.length >= 3) {
-      final alarmId = parts[0];
-      final alarmLabel = parts[1];
-      final originalTime = DateTime.parse(parts[2]);
+    try {
+      print(' Snooze button pressed with payload: $payload');
 
-      // calculate time after 5 minutes
-      final snoozeTime = DateTime.now().add(const Duration(minutes: 5));
+      final parts = payload.split('|');
+      if (parts.length >= 3) {
+        final originalAlarmId = parts[0];
+        final alarmLabel = parts[1];
 
-      print('Snoozing alarm: $alarmLabel for 5 minutes');
+        print(' Snoozing alarm: $alarmLabel');
 
-      // Snooze notification schedule
-      final NotificationService notificationService = NotificationService();
-      await notificationService.scheduleSnoozeNotification(
-        alarmId: 'snooze_${DateTime.now().millisecondsSinceEpoch}',
-        originalAlarmId: alarmId,
-        title: 'Snooze: $alarmLabel',
-        body: alarmLabel,
-        scheduledTime: snoozeTime,
-        originalTime: originalTime,
-      );
+        // Cancel current notification
+        await _notification.cancel(int.parse(originalAlarmId));
+        final int newSnoozeId =
+            DateTime.now().millisecondsSinceEpoch % 1000000000;
+
+        // Schedule snooze for 5 minutes later
+        final snoozeTime = DateTime.now().add(const Duration(minutes: 5));
+
+        await NotificationService.scheduleSnoozeNotification(
+          alarmId: newSnoozeId.toString(),
+          originalAlarmId: originalAlarmId,
+          title: 'Snooze: $alarmLabel',
+          body: alarmLabel,
+          scheduledTime: snoozeTime,
+          originalTime: DateTime.now(),
+        );
+
+        log(' Snooze scheduled for 5 minutes at $snoozeTime');
+      }
+    } catch (e) {
+      print(' Snooze error: $e');
     }
   }
 
@@ -117,7 +121,7 @@ class NotificationService {
       description: alarmChannelDesc,
       importance: Importance.max,
 
-      //sound: RawResourceAndroidNotificationSound('alarm_sound'),
+      sound: RawResourceAndroidNotificationSound('alarm_sound'),
       enableVibration: true,
       vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
       playSound: true,
@@ -131,14 +135,14 @@ class NotificationService {
   }
 
   // Snooze aur Cancel buttons notification details
-  NotificationDetails _getAlarmNotificationDetails(String payload) {
+  static NotificationDetails _getAlarmNotificationDetails(String payload) {
     AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'alarm_channel', //
-      'Alarm Notifications', //
-      channelDescription: 'Channel for alarm notifications',
+      alarmChannelId, //
+      alarmChannelName, //
+      channelDescription: alarmChannelDesc,
       importance: Importance.max,
       priority: Priority.high,
-      //sound: RawResourceAndroidNotificationSound('alarm_sound'),
+      sound: RawResourceAndroidNotificationSound('alarm_sound'),
       enableVibration: true,
       vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
       playSound: true,
@@ -148,13 +152,13 @@ class NotificationService {
       actions: [
         AndroidNotificationAction(
           snoozeActionId,
-          'Snooze',
-          showsUserInterface: false,
+          'snooze',
+          showsUserInterface: true,
         ),
         AndroidNotificationAction(
           cancelActionId,
           'Cancel',
-          showsUserInterface: false,
+          showsUserInterface: true,
           cancelNotification: true,
         ),
       ],
@@ -239,7 +243,7 @@ class NotificationService {
 
   // Snooze notification
 
-  Future<void> scheduleSnoozeNotification({
+  static Future<void> scheduleSnoozeNotification({
     required String alarmId,
     required String originalAlarmId,
     required String title,
@@ -301,40 +305,5 @@ class NotificationService {
       // Method 3: Fallback - use timestamp
       return DateTime.now().millisecondsSinceEpoch % 1000000;
     }
-  }
-
-  Future<void> testSimpleNotification() async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'alarm_channel',
-          'Alarm Notifications',
-          importance: Importance.max,
-          priority: Priority.high,
-
-          enableLights: true,
-          // ✅ Different action configuration
-          actions: [
-            AndroidNotificationAction(
-              '0', // ✅ Numeric ID try karo
-              'Snooze',
-              showsUserInterface: false,
-            ),
-            AndroidNotificationAction(
-              '1', // ✅ Numeric ID try karo
-              'Cancel',
-              showsUserInterface: false,
-              cancelNotification: true,
-            ),
-          ],
-        );
-
-    await _notification.show(
-      1111,
-      'Test Notification',
-      'Tap buttons to test',
-      const NotificationDetails(android: androidDetails),
-      payload: 'test_1111|Test|${DateTime.now()}',
-    );
-    print('🧪 Test notification shown');
   }
 }
